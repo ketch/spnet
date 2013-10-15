@@ -58,6 +58,8 @@
 <h3>
 {% if post.is_rec() %}
 Recommendation for
+{% elif post.citationType=='announce' %}
+Announcement of
 {% else %}
 Comment on 
 {% endif %}
