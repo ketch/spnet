@@ -15,7 +15,7 @@ def get_paper(ID, paperType):
         except errors.TimeoutError:
             raise KeyError('eutils timed out, unable to retrive pubmedID')
     elif paperType == 'DOI':
-        return core.DoiPaperData(DOI=DOI, insertNew='findOrInsert').parent
+        return core.DoiPaperData(DOI=ID, insertNew='findOrInsert').parent
     elif paperType == 'shortDOI':
         return core.DoiPaperData(shortDOI, insertNew='findOrInsert').parent
     else:
@@ -48,7 +48,7 @@ ref_patterns = [('#arxiv_([a-z0-9_]+)', 'arxiv', get_hashtag_arxiv),
                 ('#pubmed_([0-9]+)', 'pubmed', lambda m:str(m)),
                 ('PMID:\s?([0-9]+)', 'pubmed', lambda m:str(m)),
                 ('#shortDOI_([a-zA-Z0-9]+)', 'shortDOI', lambda m:str(m)),
-                ('[dD][oO][iI]:\s?(10\.[^<]+)', 'DOI', lambda m:str(m)),
+                ('[dD][oO][iI]:\s?(10\.[^< ]+)', 'DOI', lambda m:str(m)),
                 ('shortDOI:\s?([a-zA-Z0-9]+)', 'shortDOI', lambda m:str(m))]
 
 topic_patterns = ['#([a-zA-Z][a-zA-Z0-9_]+)']
@@ -68,27 +68,26 @@ def get_references_and_tags(content):
     references = {}
     topics = []
     primary = None
-    print content
+
+    from html2text import dehtml
+    content = dehtml(content)
 
     # Match all paper references with a tag in front of them
     for pattern, reftype, patfun in ref_patterns:
         refpat = re.compile('#(\w+)\s+'+pattern)
         ref_matches = refpat.findall(content)
-        print ref_matches
         for reference in ref_matches:
             tag = reference[0]
-            # Need to canonicalize ref; this may already be implemented somewhere
             ref = patfun(reference[1])
             if tag in valid_tags:
                 references[ref] = (tag, reftype)
-            else:
+            elif tag != 'spnetwork':
                 print 'invalid tag: ', tag
                 references[ref] = ('discuss', reftype)
 
     # Match all paper references without a tag in front of them
     for pattern, reftype, patfun in ref_patterns:
         refpat = re.compile(pattern)
-        print ref_matches
         ref_matches = refpat.findall(content)
         for ref in ref_matches:
             ref = patfun(ref)
@@ -115,12 +114,8 @@ def get_references_and_tags(content):
             refloc = ref.start()
             if (refloc > sptagloc) and (refloc < first_ref_loc):
                 first_ref_loc = refloc
-                primary = patfun(ref.group())
+                primary = patfun(ref.group(1))
 
-
-    print '------------------'
-    print references, primary
-    print '------------------'
 
     return references, topics, primary
 
@@ -163,6 +158,9 @@ def find_or_insert_posts(posts, get_post_comments, find_or_insert_person,
         if is_reshare(d): # just a duplicate (reshared) post, so skip
             continue
         content = get_content(d)
+        # Only process posts with #spnetwork in them
+        if content.lower().find('#spnetwork')==-1:
+            continue
         isRec = content.find('#recommend') >= 0 or \
                 content.find('#mustread') >= 0
         isAnn = content.find('#announce') >= 0
@@ -173,29 +171,26 @@ def find_or_insert_posts(posts, get_post_comments, find_or_insert_person,
                 continue # matches DB record, so nothing to do
         except KeyError:
             pass
-        import my_hashtag_proc
-        refs, topics, primary = my_hashtag_proc.get_references_and_tags(content)
-        if (post is None) and (refs is not {}): # extract data for saving post to DB
+        refs, topics, primary = get_references_and_tags(content)
+        if (post is None) and (refs != {}): # extract data for saving post to DB
             primary_paper_ID = refs[primary]
             primary_paper = get_paper(primary,refs[primary][1])
 
             userID = get_user(d)
             author = find_or_insert_person(userID)
             d['author'] = author._id
-        d['text'] =  content
-        if process_post:
-            process_post(d)
-        #NEED TO UPDATE THIS LINE:
-        d['sigs'] = get_topicIDs(topics, get_id(d),
-                                 timeStamp, source)
-        d['citationType'] = refs[primary][0]
-        if post is None: # save to DB
+            d['citationType'] = refs[primary][0]
+            d['text'] =  content
+            if process_post:
+                process_post(d)
+            d['sigs'] = get_topicIDs(topics, get_id(d),
+                                     timeStamp, source)
             post = core.Post(docData=d, parent=primary_paper)
             if len(refs.keys()) > 1: # save 2ary citations
                 for ref, meta in refs.iteritems():
                     if ref != primary_paper_ID:
                         paper = get_paper(ref, meta[1])
-                        post.add_citations(paper, meta[0])
+                        post.add_citations([paper], meta[0])
             try:
                 topicsDict
             except NameError:
@@ -203,7 +198,7 @@ def find_or_insert_posts(posts, get_post_comments, find_or_insert_person,
             bulk.deliver_rec(paper._id, d, topicsDict, subsDict)
             if recentEvents is not None: # add to monitor deque
                 saveEvents.append(post)
-        else: # update DB with new data and etag
+        elif post is not None: # update DB with new data and etag
             post.update(d)
         yield post
         if get_replycount(d) > 0:
@@ -240,3 +235,28 @@ def find_or_insert_posts(posts, get_post_comments, find_or_insert_person,
         for r in saveEvents:
             recentEvents.appendleft(r) # add to monitor deque
 
+def test_hashtag_parsing():
+
+    content1 = """<a class="ot-hashtag"
+     href="https://plus.google.com/s/%23spnetwork">#spnetwork</a>  <a
+     class="ot-hashtag"
+     href="https://plus.google.com/s/%23recommend">#recommend</a>
+     doi:10.1007/BF01389633<br /><br /><a class="ot-hashtag"
+     href="https://plus.google.com/s/%23discuss">#discuss</a>
+     doi:10.1147/rd.112.0215<br /><a class="ot-hashtag"
+     href="https://plus.google.com/s/%23discuss">#discuss</a>
+     doi:10.1007/BF01932030<br /><a class="ot-hashtag"
+     href="https://plus.google.com/s/%23numericalAnalysis">#numericalAnalysis</a>"""
+
+    refs, topics, primary = get_references_and_tags(content1)
+    assert(primary=='10.1007/BF01389633')
+    assert(topics==['numericalAnalysis'])
+    assert(refs['10.1007/BF01389633'][0]=='recommend')
+    assert(refs['10.1147/rd.112.0215'] == ('discuss', 'DOI'))
+
+    content2 = "#spnetwork arxiv:1234.5678<br />"
+    refs, topics, primary = get_references_and_tags(content2)
+    assert(primary=='1234.5678')
+
+if __name__ == '__main__':
+    test_hashtag_parsing()
