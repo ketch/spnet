@@ -48,7 +48,7 @@ ref_patterns = [('#arxiv_([a-z0-9_]+)', 'arxiv', get_hashtag_arxiv),
                 ('#pubmed_([0-9]+)', 'pubmed', lambda m:str(m)),
                 ('PMID:\s?([0-9]+)', 'pubmed', lambda m:str(m)),
                 ('#shortDOI_([a-zA-Z0-9]+)', 'shortDOI', lambda m:str(m)),
-                ('[dD][oO][iI]:\s?(10\.[^< ]+)', 'DOI', lambda m:str(m)),
+                (r'[dD][oO][iI]:(10[.][0-9]{4,}(?:[.][0-9]+)*/(?:(?!["&\'])\S)+)\b', 'DOI', lambda m:str(m)),
                 ('shortDOI:\s?([a-zA-Z0-9]+)', 'shortDOI', lambda m:str(m))]
 
 topic_patterns = ['#([a-zA-Z][a-zA-Z0-9_]+)']
