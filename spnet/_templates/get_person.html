@@ -161,9 +161,11 @@ by clicking the <B>Invite your contacts</B> button at the top.
 <h3>Recommendations</h3>
 <dl id='post-list'>
 {% for i,rec in enumerate(timesort(person.recommendations)) %}
-<dt title="click to show/hide">
-<img src="/favicon.ico"/> {{ rec.title }}
-( {{- display_datetime(rec.published) -}} )
+<dt title="click to show/hide" class="truncate">
+<img src="/favicon.ico"/>
+<b> {{ rec.parent.title }} </b> &nbsp;
+{{ rec.title }}
+<i> {{- display_datetime(rec.published) -}} </i> 
 </dt>
 <dd>
 <div class="list-comments">
@@ -223,9 +225,11 @@ RE: topics:
 {% for post in timesort(person.posts) %}
 {% if not post.is_rec() %}
 {% set i = i + 1 %}
-<dt title="click to show/hide">
-<img src="/favicon.ico"/> {{ post.title }}
-( {{- display_datetime(post.published) -}} )
+<dt title="click to show/hide" class="truncate">
+<img src="/favicon.ico"/>
+<b> {{ post.parent.title }} </b> &nbsp;
+{{ post.title }}
+<i> {{- display_datetime(post.published) -}} </i> 
 </dt>
 <dd>
 <div class="list-comments">
