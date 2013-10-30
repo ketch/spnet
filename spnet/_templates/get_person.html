@@ -162,10 +162,10 @@ by clicking the <B>Invite your contacts</B> button at the top.
 <dl id='post-list'>
 {% for i,rec in enumerate(timesort(person.recommendations)) %}
 <dt title="click to show/hide" class="truncate">
-<img src="/favicon.ico"/>
-<b> {{ rec.parent.title }} </b> &nbsp;
-{{ rec.title }}
-<i> {{- display_datetime(rec.published) -}} </i> 
+<div class="paper-title"> <img src="/favicon.ico"/>
+{{ rec.parent.title }} </div> &nbsp;
+<div class="post-intro">{{ rec.title }}</div>
+<div class="post-date"><i> {{- display_datetime(rec.published) -}} </i> </div>
 </dt>
 <dd>
 <div class="list-comments">

@@ -753,3 +753,30 @@ div#long-dc-list {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
+.paper-title {
+  width: 30%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  float: left;
+  font-weight: bold
+}
+
+.post-intro {
+  width: 56%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  float: left
+}
+
+.post-date {
+  width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  float: left;
+  font-style: italic
+}
